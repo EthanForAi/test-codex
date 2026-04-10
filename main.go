@@ -1,7 +1,11 @@
 package main
 
-import "fmt"
+import (
+	"fmt"
+	"time"
+)
 
 func main() {
-	fmt.Println("helloworld")
+	now := time.Now().Format("2006-01-02 15:04:05")
+	fmt.Printf("[%s] helloworld\n", now)
 }
