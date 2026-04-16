@@ -1,22 +1,40 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
-	"math/rand"
+	"log"
 	"time"
+
+	"placevr/placevr"
 )
 
-func printRandomNumber() {
-	// Seed with current time to get different values across runs.
-	r := rand.New(rand.NewSource(time.Now().UnixNano()))
-	now := time.Now().Format("2006-01-02 15:04:05")
-	fmt.Printf("[%s] helloworld random: %d\n", now, r.Intn(100))
-}
-
 func main() {
-	// Continuously print a random number every second.
-	for {
-		printRandomNumber()
-		time.Sleep(time.Second)
+	node := placevr.Node{
+		NodeID:    "node-demo-1",
+		Template:  placevr.DefaultTemplateV1(),
+		CreatedAt: time.Now(),
 	}
+
+	for i := 1; i <= placevr.MaxShotsPerNode; i++ {
+		if err := node.AddShot(placevr.Shot{
+			ShotID:     fmt.Sprintf("shot-%02d", i),
+			FilePath:   fmt.Sprintf("sessions/demo/node-1/%02d.jpg", i),
+			CapturedAt: time.Now(),
+		}); err != nil {
+			log.Fatalf("failed to add shot: %v", err)
+		}
+	}
+
+	if err := node.Validate(); err != nil {
+		log.Fatalf("invalid node: %v", err)
+	}
+
+	payload, err := json.MarshalIndent(node, "", "  ")
+	if err != nil {
+		log.Fatalf("marshal failed: %v", err)
+	}
+
+	fmt.Println(string(payload))
+	fmt.Printf("ready_for_upload=%t\n", node.IsReadyForUpload())
 }
