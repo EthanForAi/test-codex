@@ -1,6 +1,11 @@
 package main
 
-import "testing"
+import (
+	"bytes"
+	"log"
+	"strings"
+	"testing"
+)
 
 func TestCalculateDiscount(t *testing.T) {
 	tests := []struct {
@@ -115,4 +120,58 @@ func TestCalculateDiscount(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestCalculateDiscountLogsSuccess(t *testing.T) {
+	var logBuffer bytes.Buffer
+	restoreLogger(t, &logBuffer)
+
+	got, err := CalculateDiscount(200, "percent10", false)
+	if err != nil {
+		t.Fatalf("CalculateDiscount returned unexpected error: %v", err)
+	}
+	if got != 180 {
+		t.Fatalf("CalculateDiscount returned %v, want 180", got)
+	}
+
+	logOutput := logBuffer.String()
+	if !strings.Contains(logOutput, `calculate discount started: price=200.00 coupon="percent10" normalized_coupon="PERCENT10" vip=false`) {
+		t.Fatalf("expected start log, got %q", logOutput)
+	}
+	if !strings.Contains(logOutput, `calculate discount completed: rule="PERCENT10" original=200.00 final=180.00`) {
+		t.Fatalf("expected completion log, got %q", logOutput)
+	}
+}
+
+func TestCalculateDiscountLogsFailure(t *testing.T) {
+	var logBuffer bytes.Buffer
+	restoreLogger(t, &logBuffer)
+
+	_, err := CalculateDiscount(100, "VIP20", false)
+	if err == nil {
+		t.Fatal("CalculateDiscount error = nil, want non-nil")
+	}
+
+	logOutput := logBuffer.String()
+	if !strings.Contains(logOutput, `calculate discount failed: price=100.00 coupon="VIP20" vip=false error=coupon is only valid for VIP users`) {
+		t.Fatalf("expected failure log, got %q", logOutput)
+	}
+}
+
+func restoreLogger(t *testing.T, output *bytes.Buffer) {
+	t.Helper()
+
+	previousWriter := log.Writer()
+	previousFlags := log.Flags()
+	previousPrefix := log.Prefix()
+
+	log.SetOutput(output)
+	log.SetFlags(0)
+	log.SetPrefix("")
+
+	t.Cleanup(func() {
+		log.SetOutput(previousWriter)
+		log.SetFlags(previousFlags)
+		log.SetPrefix(previousPrefix)
+	})
 }
